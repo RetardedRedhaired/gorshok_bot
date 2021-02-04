@@ -3,11 +3,9 @@ import youtube_dl
 import asyncio
 from discord.ext import commands
 import logging
-from json import dumps
 
 bot = commands.Bot(command_prefix='#')
 sem = asyncio.Semaphore(1)
-flag = False
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
@@ -52,7 +50,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        # print("TEST", dumps(data, sort_keys=True, ensure_ascii=False, indent=4))
 
         if 'entries' in data:
             # take first item from a playlist
@@ -62,21 +59,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-def change_flag():
-    flag = False
-
-
 class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
-        self.playing = False
-        self.ctx = None
         self.queue = asyncio.Queue()
-
-    async def next_song(*args):
-        mus = args[0]
-        mus.playing = False
-        await mus.stream(mus.ctx)
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
@@ -93,14 +79,10 @@ class Music(commands.Cog):
 
         print("STREAM STARTED at ", ctx.voice_client)
         while True:
-            self.playing = True
             url = await self.queue.get()
-            self.ctx = ctx
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            # print(dumps(player.data, ensure_ascii=False, indent=4))
             await ctx.send('Now playing: {}'.format(player.title))
             ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-            # print(player.data["duration"])
             await asyncio.sleep(player.data["duration"])
 
     @commands.command()
@@ -155,7 +137,6 @@ class Music(commands.Cog):
 
         await ctx.voice_client.disconnect()
 
-    # @play.before_invoke
     async def ensure_voice(self, ctx):
         if ctx.voice_client is None:
             if ctx.author.voice:
@@ -171,8 +152,3 @@ class Music(commands.Cog):
 async def on_ready():
     print('Logged in as {0} ({0.id})'.format(bot.user))
     print('------')
-
-
-@bot.command()
-async def test(ctx):
-    await ctx.send("Горшок жив")
