@@ -72,10 +72,9 @@ class Music(commands.Cog):
             return await ctx.voice_client.move_to(channel)
 
         await channel.connect()
-        logging.info("Connected to %s channel", ctx.channel())
 
     async def stream(self, ctx):
-        """Streams from a url (same as yt, but doesn't predownload)"""
+        """Streams from a url"""
 
         print("STREAM STARTED at ", ctx.voice_client)
         while True:
@@ -87,11 +86,17 @@ class Music(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, url):
+        """Places song in the queue and activates player if it not activated yet."""
+
         print("IN QUEUE RIGHT NOW: ", self.queue.qsize())
         print("VOICE CLIENT: ", ctx.voice_client)
+        print("GUILD: ", type(ctx.guild.channels[1].name))
         if ctx.voice_client is not None:
             self.queue.put_nowait(url)
             print("QUEUED")
+            if not ctx.voice_client.is_playing():
+                async with sem:
+                    await self.stream(ctx)
         else:
             await self.ensure_voice(ctx)
             self.queue.put_nowait(url)
@@ -101,7 +106,33 @@ class Music(commands.Cog):
 
     @commands.command()
     async def p(self, ctx, *, url):
+        """Same as play"""
+
         await self.play(ctx, url=url)
+
+    @commands.command()
+    async def shadow(self, ctx, *, inp):
+        """Позволяет воспроизводить аудио в канал, если автор не подключен к исходному каналу"""
+
+        flag = True
+        inp = inp.split('_')
+        try:
+            channel_name, url = inp[0], inp[1]
+            if len(url) == 0:
+                raise IndexError
+        except IndexError:
+            await ctx.send("Неправильный формат, надо: #shadow имяголосовогоканала_url")
+            return
+        print(url, len(url))
+        for v_channel in ctx.guild.voice_channels:
+            if v_channel.name == channel_name:
+                flag = False
+                break
+        if flag is False:
+            await self.join(ctx, channel=v_channel)
+            await self.play(ctx, url=url)
+        else:
+            await ctx.send(f"There is no voice channel with name {channel_name}")
 
     @commands.command()
     async def volume(self, ctx, volume: int):
