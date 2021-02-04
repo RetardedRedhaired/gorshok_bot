@@ -8,6 +8,8 @@ __pycache__/
 
 config.ini
 
+.idea
+
 # Distribution / packaging
 .Python
 build/

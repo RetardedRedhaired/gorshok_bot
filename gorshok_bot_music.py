@@ -88,19 +88,14 @@ class Music(commands.Cog):
     async def play(self, ctx, *, url):
         """Places song in the queue and activates player if it not activated yet."""
 
-        print("IN QUEUE RIGHT NOW: ", self.queue.qsize())
-        print("VOICE CLIENT: ", ctx.voice_client)
-        print("GUILD: ", type(ctx.guild.channels[1].name))
         if ctx.voice_client is not None:
             self.queue.put_nowait(url)
-            print("QUEUED")
             if not ctx.voice_client.is_playing():
                 async with sem:
                     await self.stream(ctx)
         else:
             await self.ensure_voice(ctx)
             self.queue.put_nowait(url)
-            print("BOT IS NOT CONNECTED TO VOICE CHANNEL")
             async with sem:
                 await self.stream(ctx)
 
@@ -123,7 +118,6 @@ class Music(commands.Cog):
         except IndexError:
             await ctx.send("Неправильный формат, надо: #shadow имяголосовогоканала_url")
             return
-        print(url, len(url))
         for v_channel in ctx.guild.voice_channels:
             if v_channel.name == channel_name:
                 flag = False
@@ -132,7 +126,7 @@ class Music(commands.Cog):
             await self.join(ctx, channel=v_channel)
             await self.play(ctx, url=url)
         else:
-            await ctx.send(f"There is no voice channel with name {channel_name}")
+            await ctx.send(f"Канал с именем {channel_name} не найден")
 
     @commands.command()
     async def volume(self, ctx, volume: int):
