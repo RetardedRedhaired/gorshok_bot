@@ -76,7 +76,6 @@ class Music(commands.Cog):
     async def stream(self, ctx):
         """Streams from a url"""
 
-        print("STREAM STARTED at ", ctx.voice_client)
         while True:
             url = await self.queue.get()
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
