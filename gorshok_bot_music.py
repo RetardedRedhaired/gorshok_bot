@@ -108,24 +108,27 @@ class Music(commands.Cog):
     async def shadow(self, ctx, *, inp):
         """Позволяет воспроизводить аудио в канал, если автор не подключен к исходному каналу"""
 
-        flag = True
-        inp = inp.split('_')
-        try:
-            channel_name, url = inp[0], inp[1]
-            if len(url) == 0:
-                raise IndexError
-        except IndexError:
-            await ctx.send("Неправильный формат, надо: #shadow имяголосовогоканала_url")
-            return
-        for v_channel in ctx.guild.voice_channels:
-            if v_channel.name == channel_name:
-                flag = False
-                break
-        if flag is False:
-            await self.join(ctx, channel=v_channel)
-            await self.play(ctx, url=url)
+        if ctx.voice_client.is_playing():
+            ctx.send("Бот сейчас занят")
         else:
-            await ctx.send(f"Канал с именем {channel_name} не найден")
+            flag = True
+            inp = inp.split('_')
+            try:
+                channel_name, url = inp[0], inp[1]
+                if len(url) == 0:
+                    raise IndexError
+            except IndexError:
+                await ctx.send("Неправильный формат, надо: #shadow имяголосовогоканала_url")
+                return
+            for v_channel in ctx.guild.voice_channels:
+                if v_channel.name == channel_name:
+                    flag = False
+                    break
+            if flag is False:
+                await self.join(ctx, channel=v_channel)
+                await self.play(ctx, url=url)
+            else:
+                await ctx.send(f"Канал с именем {channel_name} не найден")
 
     @commands.command()
     async def volume(self, ctx, volume: int):

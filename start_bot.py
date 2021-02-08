@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from discord.ext import commands
 import gorshok_bot_music as mus
 import configparser
