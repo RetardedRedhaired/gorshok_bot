@@ -82,6 +82,7 @@ class Music(commands.Cog):
             player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
             await ctx.send('Now playing: {}'.format(player.title))
             ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+            print(f'Playing in: {ctx.voice_client}')
             await asyncio.sleep(player.data["duration"])
 
     @commands.command()
@@ -145,19 +146,19 @@ class Music(commands.Cog):
     async def pause(self, ctx):
         """Pause translating"""
 
-        await ctx.voice_client.pause()
+        ctx.voice_client.pause()
 
     @commands.command()
     async def resume(self, ctx):
         """Resume translating"""
 
-        await ctx.voice_client.resume()
+        ctx.voice_client.resume()
 
     @commands.command()
     async def stop(self, ctx):
         """Stops translating"""
 
-        await ctx.voice_client.stop()
+        ctx.voice_client.stop()
 
     @commands.command()
     async def leave(self, ctx):
