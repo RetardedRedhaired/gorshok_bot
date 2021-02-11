@@ -3,9 +3,11 @@ import youtube_dl
 import asyncio
 from discord.ext import commands
 import logging
+from random import randint
 
 bot = commands.Bot(command_prefix='#')
 sem = asyncio.Semaphore(1)
+music_emotes = [':saxophone:', ':trumpet:', ':microphone:', ':headphones:', ':musical_score:', ':drum:', ':musical_keyboard:', ':long_drum:', ':guitar:', ':banjo:', ':violin:', ':accordion:']
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.INFO)
@@ -72,7 +74,7 @@ class Music(commands.Cog):
         fut = asyncio.run_coroutine_threadsafe(coro, loop)
         try:
             fut.result()
-        except error:
+        except Exception:
             print(error)
 
     @commands.command()
@@ -93,26 +95,28 @@ class Music(commands.Cog):
     async def stream(self, ctx):
         """Streams from a url"""
 
-        url = await self.queue.get()
-        player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-        await ctx.send('Now playing: {}'.format(player.title))
+        player = await self.queue.get()
         ctx.voice_client.play(player, after=self.next_song)
+        await ctx.channel.send(f'{music_emotes[randint(0, 11)]} **Cейчас играет** `{player.title}`')
 
     @commands.command()
     async def play(self, ctx, *, url):
         """Places song in the queue and activates player if it not activated yet."""
 
         self.ctx = ctx
-        await self.queue.put(url)
         if ctx.voice_client is None:
             async with sem:
                 await self.ensure_voice(ctx)
+        player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        if not self.queue.empty() or ctx.voice_client.is_playing():
+            await ctx.channel.send(f':manual_wheelchair: **Трек** `{player.title}` **добавлен в очередь воспроизведения**')
+        await self.queue.put(player)
         if not ctx.voice_client.is_playing():
             await self.stream(ctx)
 
     @commands.command()
     async def p(self, ctx, *, url):
-        """Same as play"""
+        """То же самое, что и play"""
 
         await self.play(ctx, url=url)
 
@@ -121,7 +125,7 @@ class Music(commands.Cog):
         """Позволяет воспроизводить аудио в канал, если автор не подключен к исходному каналу"""
 
         if ctx.voice_client.is_playing():
-            ctx.send("Бот сейчас занят")
+            ctx.channel.send("Бот сейчас занят")
         else:
             flag = True
             inp = inp.split('_')
@@ -130,7 +134,7 @@ class Music(commands.Cog):
                 if len(url) == 0:
                     raise IndexError
             except IndexError:
-                await ctx.send("Неправильный формат, надо: #shadow имяголосовогоканала_url")
+                await ctx.channel.send("Неправильный формат, надо: #shadow имяголосовогоканала_url")
                 return
             for v_channel in ctx.guild.voice_channels:
                 if v_channel.name == channel_name:
@@ -140,35 +144,38 @@ class Music(commands.Cog):
                 await self.join(ctx, channel=v_channel)
                 await self.play(ctx, url=url)
             else:
-                await ctx.send(f"Канал с именем {channel_name} не найден")
+                await ctx.channel.send(f"Канал с именем {channel_name} не найден")
 
     @commands.command()
     async def volume(self, ctx, volume: int):
         """Changes the player's volume"""
 
         if ctx.voice_client is None:
-            return await ctx.send("Not connected to a voice channel.")
+            return await ctx.channel.send("**Вы не присоеденены к голосовому каналу**")
 
         ctx.voice_client.source.volume = volume / 100
-        await ctx.send("Changed volume to {}%".format(volume))
+        await ctx.channel.send(f"**Громкость изменена на** `{volume}`")
 
     @commands.command()
     async def pause(self, ctx):
         """Pause translating"""
 
         ctx.voice_client.pause()
+        await ctx.channel.send("**Воспроизведение приостановлено**")
 
     @commands.command()
     async def resume(self, ctx):
         """Resume translating"""
 
         ctx.voice_client.resume()
+        await ctx.channel.send("**Продолжаю воспроизведение**")
 
     @commands.command()
     async def stop(self, ctx):
         """Stops translating"""
 
         ctx.voice_client.stop()
+        await ctx.channel.send("**Воспроизведение остановлено**")
 
     @commands.command()
     async def leave(self, ctx):
@@ -181,7 +188,7 @@ class Music(commands.Cog):
             if ctx.author.voice:
                 await ctx.author.voice.channel.connect()
             else:
-                await ctx.send("You are not connected to a voice channel.")
+                await ctx.channel.send("You are not connected to a voice channel.")
                 raise commands.CommandError("Author not connected to a voice channel.")
         elif ctx.voice_client.is_playing():
             ctx.voice_client.stop()
