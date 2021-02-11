@@ -64,6 +64,22 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.queue = asyncio.Queue()
+        self.ctx = None
+
+    def next_song(self, error):
+        coro = self.skip()
+        loop = self.ctx.voice_client.loop
+        fut = asyncio.run_coroutine_threadsafe(coro, loop)
+        try:
+            fut.result()
+        except error:
+            print(error)
+
+    @commands.command()
+    async def skip(self, *args):
+        if self.ctx.voice_client.is_playing():
+            await self.stop(self.ctx)
+        await self.stream(self.ctx)
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
@@ -77,28 +93,22 @@ class Music(commands.Cog):
     async def stream(self, ctx):
         """Streams from a url"""
 
-        while True:
-            url = await self.queue.get()
-            player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-            await ctx.send('Now playing: {}'.format(player.title))
-            ctx.voice_client.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
-            print(f'Playing in: {ctx.voice_client}')
-            await asyncio.sleep(player.data["duration"])
+        url = await self.queue.get()
+        player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        await ctx.send('Now playing: {}'.format(player.title))
+        ctx.voice_client.play(player, after=self.next_song)
 
     @commands.command()
     async def play(self, ctx, *, url):
         """Places song in the queue and activates player if it not activated yet."""
 
-        if ctx.voice_client is not None:
-            self.queue.put_nowait(url)
-            if not ctx.voice_client.is_playing():
-                async with sem:
-                    await self.stream(ctx)
-        else:
-            await self.ensure_voice(ctx)
-            self.queue.put_nowait(url)
+        self.ctx = ctx
+        await self.queue.put(url)
+        if ctx.voice_client is None:
             async with sem:
-                await self.stream(ctx)
+                await self.ensure_voice(ctx)
+        if not ctx.voice_client.is_playing():
+            await self.stream(ctx)
 
     @commands.command()
     async def p(self, ctx, *, url):
