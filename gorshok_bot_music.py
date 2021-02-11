@@ -22,7 +22,7 @@ ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
-    'noplaylist': True,
+    'noplaylist': False,
     'nocheckcertificate': True,
     'ignoreerrors': False,
     'logtostderr': False,
@@ -80,7 +80,7 @@ class Music(commands.Cog):
     @commands.command()
     async def skip(self, *args):
         if self.ctx.voice_client.is_playing():
-            await self.stop(self.ctx)
+            await self.ctx.voice_client.stop()
         await self.stream(self.ctx)
 
     @commands.command()
@@ -101,7 +101,7 @@ class Music(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, url):
-        """Places song in the queue and activates player if it not activated yet."""
+        """Кладет трек в очередь и запускает воспроизведение, если это первый трек"""
 
         self.ctx = ctx
         if ctx.voice_client is None:
@@ -175,7 +175,7 @@ class Music(commands.Cog):
         """Stops translating"""
 
         ctx.voice_client.stop()
-        await ctx.channel.send("**Воспроизведение остановлено**")
+        await ctx.channel.send(":SMOrc: **Воспроизведение остановлено**")
 
     @commands.command()
     async def leave(self, ctx):
