@@ -67,6 +67,8 @@ class Music(commands.Cog):
         self.bot = bot
         self.queue = asyncio.Queue()
         self.ctx = None
+        self.url = None
+        self.repeat = False
 
     def clear_queue(self):
         while not self.queue.empty():
@@ -77,7 +79,7 @@ class Music(commands.Cog):
 
     def next_song(self, error):
         coro = self.skip()
-        loop = self.ctx.voice_client.loop
+        loop = self.bot.loop
         fut = asyncio.run_coroutine_threadsafe(coro, loop)
         try:
             fut.result()
@@ -85,10 +87,23 @@ class Music(commands.Cog):
             print(error)
 
     @commands.command()
+    async def repeat(self, ctx):
+        if self.repeat is True:
+            self.repeat = False
+            await ctx.send(":repeat_one: **Выключен повтор**")
+        else:
+            self.repeat = True
+            await ctx.send(":repeat_one: **Включен повтор**")
+
+    @commands.command()
     async def skip(self, *args):
         if self.ctx.voice_client.is_playing():
             await self.ctx.voice_client.stop()
-        await self.stream(self.ctx)
+        if self.repeat is True:
+            player = await YTDLSource.from_url(self.url, loop=self.bot.loop, stream=True)
+            self.ctx.voice_client.play(player, after=self.next_song)
+        else:
+            await self.stream(self.ctx)
 
     @commands.command()
     async def join(self, ctx, *, channel: discord.VoiceChannel):
@@ -114,9 +129,10 @@ class Music(commands.Cog):
         if ctx.voice_client is None:
             async with sem:
                 await self.ensure_voice(ctx)
+        self.url = url
         player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
         if not self.queue.empty() or ctx.voice_client.is_playing():
-            await ctx.channel.send(f':manual_wheelchair: **Трек** `{player.title}` **добавлен в очередь воспроизведения**')
+            await ctx.channel.send(f':fast_forward: **Трек** `{player.title}` **добавлен в очередь воспроизведения**')
         await self.queue.put(player)
         if not ctx.voice_client.is_playing():
             await self.stream(ctx)
