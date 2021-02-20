@@ -16,6 +16,5 @@ class MyCog(commands.Cog):
         vc = self.bot.voice_clients
         if len(vc) != 0:
             for client in vc:
-                print(client.channel.members)
-                if len(client.channel.members) == 1:
+                if len(client.channel.voice_states.keys()) == 1:
                     await client.disconnect()
