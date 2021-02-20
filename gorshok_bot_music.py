@@ -1,7 +1,7 @@
 import discord
 import youtube_dl
 import asyncio
-from discord.ext import commands
+from discord.ext import commands, tasks
 import logging
 from random import randint
 
@@ -67,6 +67,13 @@ class Music(commands.Cog):
         self.bot = bot
         self.queue = asyncio.Queue()
         self.ctx = None
+
+    def clear_queue(self):
+        while not self.queue.empty():
+            try:
+                tmp = self.queue.get_nowait()
+            except asyncio.QueueEmpty:
+                pass
 
     def next_song(self, error):
         coro = self.skip()
@@ -174,6 +181,7 @@ class Music(commands.Cog):
     async def stop(self, ctx):
         """Stops translating"""
 
+        self.clear_queue()
         ctx.voice_client.stop()
         await ctx.channel.send(":SMOrc: **Воспроизведение остановлено**")
 
@@ -181,6 +189,7 @@ class Music(commands.Cog):
     async def leave(self, ctx):
         """Stops and disconnects the bot from voice"""
 
+        self.clear_queue()
         await ctx.voice_client.disconnect()
 
     async def ensure_voice(self, ctx):

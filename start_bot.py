@@ -3,6 +3,7 @@ from discord.ext import commands
 import gorshok_bot_music as mus
 import configparser
 import argparse
+import gorshok_bot_tasks as tasks
 
 
 class Config:
@@ -22,4 +23,5 @@ def config_parsing():
 config = Config(config_parsing())
 bot = commands.Bot(command_prefix='#')
 bot.add_cog(mus.Music(bot))
+bot.add_cog(tasks.MyCog(bot))
 bot.run(config.token)
