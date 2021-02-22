@@ -75,6 +75,8 @@ class Music(commands.Cog):
         self.repeat = False
 
     def clear_queue(self):
+        """Метод для очистки очереди воспроизведения"""
+
         while not self.queue.empty():
             try:
                 tmp = self.queue.get_nowait()
@@ -82,6 +84,7 @@ class Music(commands.Cog):
                 pass
 
     def next_song(self, error):
+        """Метод-корутина, который можно засунуть в after при создании плеера"""
         coro = self.skip()
         loop = self.bot.loop
         fut = asyncio.run_coroutine_threadsafe(coro, loop)
@@ -91,7 +94,23 @@ class Music(commands.Cog):
             print(error)
 
     @commands.command()
+    async def gachi(self, ctx):
+        """Врубает рандомный гачи микс"""
+
+        counter = 0
+        tmp = randint(0, 118)
+        gachi_list = open("gachi.txt", "r")
+        for track in gachi_list:
+            if counter == tmp:
+                await self.play(ctx, url=track)
+                break
+            else:
+                counter += 1
+
+    @commands.command()
     async def repeat(self, ctx):
+        """Включает и выключает повтор текущего трека"""
+
         if self.repeat is True:
             self.repeat = False
             await ctx.send(":repeat_one: **Выключен повтор**")
@@ -101,6 +120,8 @@ class Music(commands.Cog):
 
     @commands.command()
     async def skip(self, *args):
+        """"Отключает текущий трек и включает следующий."""
+
         if self.ctx.voice_client.is_playing():
             await self.ctx.voice_client.stop()
         if self.repeat is True:
