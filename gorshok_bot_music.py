@@ -53,13 +53,17 @@ class YTDLSource(discord.PCMVolumeTransformer):
     async def from_url(cls, url, *, loop=None, stream=False):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+        tracks = []
 
         if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
-
-        filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+            for entry in data['entries']:
+                data = entry
+                filename = data['url'] if stream else ytdl.prepare_filename(data)
+                tracks.append(cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data))
+        else:
+            filename = data['url'] if stream else ytdl.prepare_filename(data)
+            tracks.append(cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data))
+        return tracks
 
 
 class Music(commands.Cog):
@@ -130,12 +134,17 @@ class Music(commands.Cog):
             async with sem:
                 await self.ensure_voice(ctx)
         self.url = url
-        player = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
-        if not self.queue.empty() or ctx.voice_client.is_playing():
-            await ctx.channel.send(f':fast_forward: **Трек** `{player.title}` **добавлен в очередь воспроизведения**')
-        await self.queue.put(player)
+        tracks = await YTDLSource.from_url(url, loop=self.bot.loop, stream=True)
+        for player in tracks:
+            if len(tracks) == 1:
+                if not self.queue.empty() or ctx.voice_client.is_playing():
+                    await ctx.channel.send(f':fast_forward: **Трек** `{player.title}` **добавлен в очередь '
+                                           f'воспроизведения**')
+            await self.queue.put(player)
         if not ctx.voice_client.is_playing():
             await self.stream(ctx)
+        if len(tracks) > 1:
+            await ctx.channel.send(f':fast_forward: **В очередь добавлено** `{len(tracks) - 1}` **трека(-ов)**')
 
     @commands.command()
     async def p(self, ctx, *, url):
@@ -199,7 +208,7 @@ class Music(commands.Cog):
 
         self.clear_queue()
         ctx.voice_client.stop()
-        await ctx.channel.send(":SMOrc: **Воспроизведение остановлено**")
+        await ctx.channel.send(":stop_button: **Воспроизведение остановлено**")
 
     @commands.command()
     async def leave(self, ctx):
