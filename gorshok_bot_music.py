@@ -3,7 +3,7 @@ import youtube_dl
 import asyncio
 from discord.ext import commands, tasks
 import logging
-from random import randint
+from random import choice
 
 bot = commands.Bot(command_prefix='#')
 sem = asyncio.Semaphore(1)
@@ -73,6 +73,7 @@ class Music(commands.Cog):
         self.ctx = None
         self.url = None
         self.repeat = False
+        self.gachi_list = None
 
     def clear_queue(self):
         """Метод для очистки очереди воспроизведения"""
@@ -97,15 +98,11 @@ class Music(commands.Cog):
     async def gachi(self, ctx):
         """Врубает рандомный гачи микс"""
 
-        counter = 0
-        tmp = randint(0, 118)
-        gachi_list = open("gachi.txt", "r")
-        for track in gachi_list:
-            if counter == tmp:
-                await self.play(ctx, url=track)
-                break
-            else:
-                counter += 1
+        if self.gachi_list is None:
+            with open("gachi.txt", "r") as gachi_list:
+                self.gachi_list = gachi_list.read().rstrip("\n").split("\n")
+        await self.play(ctx, url=choice(self.gachi_list))
+
 
     @commands.command()
     async def repeat(self, ctx):
@@ -144,7 +141,7 @@ class Music(commands.Cog):
 
         player = await self.queue.get()
         ctx.voice_client.play(player, after=self.next_song)
-        await ctx.channel.send(f'{music_emotes[randint(0, 11)]} **Cейчас играет** `{player.title}`')
+        await ctx.channel.send(f'{choice(music_emotes)} **Cейчас играет** `{player.title}`')
 
     @commands.command()
     async def play(self, ctx, *, url):
